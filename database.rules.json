@@ -1,0 +1,50 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": false,
+
+    "pixels": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["t"],
+      "$key": {
+        "c": { ".validate": "newData.isString() && newData.val().length <= 9" },
+        "b": { ".validate": "newData.val() === 'A' || newData.val() === 'B'" },
+        "t": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "quota": {
+      ".read": "auth != null",
+      "$profile": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['date','used'])",
+        "date": { ".validate": "newData.isString() && newData.val().length <= 10" },
+        "used": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "stats": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "totalPlaced": { ".validate": "newData.isNumber()" },
+      "startedAt": { ".validate": "newData.isNumber()" },
+      "$other": { ".validate": false }
+    },
+
+    "snapshots": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$date": {
+        ".validate": "newData.hasChildren(['png'])"
+      }
+    },
+
+    "profiles": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

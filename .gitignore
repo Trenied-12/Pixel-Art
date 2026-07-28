@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build-Ausgabe
+dist/
+
+# Lokale Umgebung / Firebase-Config (NICHT committen)
+.env
+.env.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
