@@ -35,8 +35,8 @@ export default function App() {
 function Splash() {
   return (
     <div className="splash">
-      <div className="splash-heart">💛</div>
-      <div className="splash-text">verbinde euch…</div>
+      <div className="splash-heart">🦖</div>
+      <div className="splash-text">verbinde</div>
     </div>
   )
 }

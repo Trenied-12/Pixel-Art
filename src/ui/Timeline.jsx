@@ -19,7 +19,7 @@ export default function Timeline({ snapshots, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal timeline" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>📖 Euer Pixel-Tagebuch</h2>
+          <h2>📖 Unser Pixel-Tagebuch</h2>
           <button className="icon-btn" onClick={onClose} title="Schliessen" type="button">✕</button>
         </div>
 
@@ -28,7 +28,7 @@ export default function Timeline({ snapshots, onClose }) {
             <p>Noch keine Schnappschüsse.</p>
             <p className="muted">
               Ab dem ersten gemeinsamen Maltag wird jeden Tag automatisch ein Stand
-              gespeichert – dann könnt ihr hier durch die Zeit blättern. 🌱
+              gespeichert
             </p>
           </div>
         ) : (

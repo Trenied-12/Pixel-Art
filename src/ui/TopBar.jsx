@@ -42,7 +42,7 @@ export default function TopBar({
       <div className="topbar-right">
         <div className="total-counter" title="Gemeinsam gesetzte Pixel seit dem Start">
           <span className="total-num">{total.toLocaleString('de-DE')}</span>
-          <span className="total-label">zusammen 💞</span>
+          <span className="total-label">zusammen gesetzt</span>
         </div>
         <button className="icon-btn" onClick={onOpenTimeline} title="Tagebuch / Zeitleiste">📖</button>
       </div>

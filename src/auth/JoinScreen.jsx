@@ -8,7 +8,7 @@ export default function JoinScreen({ onJoin }) {
   const [error, setError] = useState('')
 
   const confirm = () => {
-    if (!selected) return setError('Bitte waehl aus, wer du bist 🙂')
+    if (!selected) return setError('Bitte wähle aus, wer du bist')
     if (APP_PASSPHRASE && pass !== APP_PASSPHRASE) {
       return setError('Passwort stimmt nicht ganz…')
     }
@@ -18,9 +18,9 @@ export default function JoinScreen({ onJoin }) {
   return (
     <div className="join-screen">
       <div className="join-card">
-        <div className="join-logo">💛</div>
+        <div className="join-logo">🦖</div>
         <h1>Pixel Art</h1>
-        <p className="join-sub">Euer gemeinsamer Pixel-Canvas. Wer bist du?</p>
+        <p className="join-sub">Gemeinsames Pixel-Art. Wer bist du?</p>
 
         <div className="join-people">
           {['A', 'B'].map((id) => {
@@ -57,7 +57,7 @@ export default function JoinScreen({ onJoin }) {
           Los geht's ✨
         </button>
         <p className="join-hint">
-          Deine Wahl wird auf diesem Geraet gemerkt – du musst das nicht jedes Mal machen.
+          Deine Wahl wird auf diesem Gerät gespeichert.
         </p>
       </div>
     </div>
