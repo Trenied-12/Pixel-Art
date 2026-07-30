@@ -78,6 +78,32 @@ export function createRenderer(canvas) {
     if (state.brushCells && state.brushCells.length) {
       drawBrushPreview(state.brushCells, cam)
     }
+
+    // Move-Tool: Auswahl + schwebende Pixel
+    if (state.move) drawMove(state.move, cam)
+  }
+
+  function drawMove(m, cam) {
+    const s = cam.scale
+    const moved = m.dx !== 0 || m.dy !== 0
+    // Beim Verschieben: Quelle "abheben" (mit Board-Farbe abdecken) und die
+    // schwebenden Pixel am Ziel ohne Glaettung zeichnen.
+    if (m.floatCanvas && moved) {
+      const src = cam.cellToScreen(m.x0, m.y0)
+      ctx.fillStyle = BOARD_COLOR
+      ctx.fillRect(src.x, src.y, m.w * s, m.h * s)
+      const dst = cam.cellToScreen(m.x0 + m.dx, m.y0 + m.dy)
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(m.floatCanvas, 0, 0, m.w, m.h, dst.x, dst.y, m.w * s, m.h * s)
+    }
+    // Auswahlrahmen (gestrichelt) am aktuellen Ziel
+    const b = cam.cellToScreen(m.x0 + m.dx, m.y0 + m.dy)
+    ctx.save()
+    ctx.strokeStyle = '#2b6cff'
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 4])
+    ctx.strokeRect(b.x + 0.5, b.y + 0.5, m.w * s - 1, m.h * s - 1)
+    ctx.restore()
   }
 
   function drawGrid(cam, bx, by, boardPx) {

@@ -6,6 +6,7 @@ export const TOOLS = [
   { id: 'eraser', label: 'Radierer', icon: '🧽', hint: 'Pixel loeschen' },
   { id: 'bucket', label: 'Fuellen', icon: '🪣', hint: 'Flaeche fuellen (bis Kontingent reicht)' },
   { id: 'eyedropper', label: 'Pipette', icon: '💧', hint: 'Farbe vom Canvas aufnehmen' },
+  { id: 'move', label: 'Verschieben', icon: '🫳', hint: 'Bereich aufziehen und verschieben (kostet kein Kontingent)' },
 ]
 
 const inBounds = (x, y) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE

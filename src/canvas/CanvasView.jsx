@@ -48,9 +48,25 @@ export default function CanvasView(props) {
   const hoverCellRef = useRef(null)
   const runningRef = useRef(false)
 
+  // Move-Tool
+  const selRef = useRef(null) // aktive Auswahl { x0,y0,w,h,dx,dy,floatCanvas,cells }
+  const marqueeRef = useRef(null) // Rechteck waehrend des Aufziehens { ax,ay,bx,by }
+  const moveActiveRef = useRef(null) // laufende Verschiebung
+  const requestRenderRef = useRef(null)
+
   const [tooltip, setTooltip] = useState(null) // { x, y, text }
 
   const getColor = (x, y) => mapRef.current.get(pixelKey(x, y))?.c ?? null
+
+  // Auswahl verwerfen, sobald ein anderes Werkzeug gewaehlt wird.
+  useEffect(() => {
+    if (props.tool !== 'move') {
+      selRef.current = null
+      marqueeRef.current = null
+      moveActiveRef.current = null
+      requestRenderRef.current?.()
+    }
+  }, [props.tool])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -66,6 +82,7 @@ export default function CanvasView(props) {
         cam,
         flashes: flashesRef.current,
         brushCells: currentBrushPreview(),
+        move: currentMoveState(),
       })
       if (flashesRef.current.length > 0) {
         requestAnimationFrame(frame)
@@ -79,14 +96,71 @@ export default function CanvasView(props) {
         requestAnimationFrame(frame)
       }
     }
+    requestRenderRef.current = requestRender
 
     function currentBrushPreview() {
       const cell = hoverCellRef.current
       if (!cell) return []
       const { tool, brushSize } = live.current
-      if (tool === 'heart') return getStampCells(cell.gx, cell.gy)
-      if (tool === 'eyedropper' || tool === 'bucket') return [[cell.gx, cell.gy]]
+      if (tool === 'move' || tool === 'eyedropper' || tool === 'bucket') {
+        return tool === 'move' ? [] : [[cell.gx, cell.gy]]
+      }
       return getBrushCells(cell.gx, cell.gy, brushSize)
+    }
+
+    // ── Move-Tool: Helfer ─────────────────────────────────────────────
+    function cellInSelection(gx, gy) {
+      const sel = selRef.current
+      if (!sel) return false
+      const x0 = sel.x0 + sel.dx
+      const y0 = sel.y0 + sel.dy
+      return gx >= x0 && gy >= y0 && gx < x0 + sel.w && gy < y0 + sel.h
+    }
+    function buildFloatCanvas(x0, y0, w, h) {
+      const c = document.createElement('canvas')
+      c.width = w
+      c.height = h
+      const cx = c.getContext('2d')
+      const cells = []
+      for (let ry = 0; ry < h; ry++) {
+        for (let rx = 0; rx < w; rx++) {
+          const px = mapRef.current.get(pixelKey(x0 + rx, y0 + ry))
+          if (px && px.c) {
+            cx.fillStyle = px.c
+            cx.fillRect(rx, ry, 1, 1)
+            cells.push({ rx, ry, c: px.c, b: px.b })
+          }
+        }
+      }
+      return { canvas: c, cells }
+    }
+    function commitMove() {
+      const sel = selRef.current
+      if (!sel || (sel.dx === 0 && sel.dy === 0)) return
+      const src = sel.cells.map((p) => ({ x: sel.x0 + p.rx, y: sel.y0 + p.ry, c: p.c, b: p.b }))
+      live.current.moveRegion?.(src, sel.dx, sel.dy)
+      sel.x0 += sel.dx
+      sel.y0 += sel.dy
+      sel.dx = 0
+      sel.dy = 0
+    }
+    function currentMoveState() {
+      if (live.current.tool !== 'move') return null
+      if (marqueeRef.current) {
+        const mq = marqueeRef.current
+        return {
+          x0: Math.min(mq.ax, mq.bx),
+          y0: Math.min(mq.ay, mq.by),
+          w: Math.abs(mq.bx - mq.ax) + 1,
+          h: Math.abs(mq.by - mq.ay) + 1,
+          dx: 0, dy: 0, floatCanvas: null,
+        }
+      }
+      const sel = selRef.current
+      if (sel) {
+        return { x0: sel.x0, y0: sel.y0, w: sel.w, h: sel.h, dx: sel.dx, dy: sel.dy, floatCanvas: sel.floatCanvas }
+      }
+      return null
     }
 
     // ── Kamera initial: Board mittig einpassen ──
@@ -155,6 +229,24 @@ export default function CanvasView(props) {
 
       const { gx, gy } = camRef.current.screenToCell(p.x, p.y)
       const { mode, tool } = live.current
+
+      if (tool === 'move') {
+        if (selRef.current && cellInSelection(gx, gy)) {
+          // bestehende Auswahl greifen und verschieben
+          moveActiveRef.current = { startGx: gx, startGy: gy, dx0: selRef.current.dx, dy0: selRef.current.dy }
+          marqueeRef.current = null
+        } else {
+          // neue Auswahl aufziehen (alte verwerfen)
+          selRef.current = null
+          moveActiveRef.current = null
+          marqueeRef.current = { ax: gx, ay: gy, bx: gx, by: gy }
+        }
+        singleRef.current = { moveMode: true, startX: p.x, startY: p.y, moved: false, time: Date.now(), lastCell: { gx, gy } }
+        hoverCellRef.current = { gx, gy }
+        requestRender()
+        return
+      }
+
       const isPaintTool = tool === 'pen' || tool === 'eraser'
       const drawing = mode === 'draw' && isPaintTool
       singleRef.current = {
@@ -197,6 +289,20 @@ export default function CanvasView(props) {
       const s = singleRef.current
       if (!s) { requestRender(); return }
 
+      if (s.moveMode) {
+        if (Math.hypot(p.x - s.startX, p.y - s.startY) > TAP_MOVE_THRESHOLD) s.moved = true
+        if (marqueeRef.current) {
+          marqueeRef.current.bx = cellNow.gx
+          marqueeRef.current.by = cellNow.gy
+        } else if (moveActiveRef.current && selRef.current) {
+          const ma = moveActiveRef.current
+          selRef.current.dx = ma.dx0 + (cellNow.gx - ma.startGx)
+          selRef.current.dy = ma.dy0 + (cellNow.gy - ma.startGy)
+        }
+        requestRender()
+        return
+      }
+
       if (s.drawing) {
         // Kontinuierlicher Strich: Luecken per Linie fuellen
         const from = s.lastCell
@@ -229,6 +335,32 @@ export default function CanvasView(props) {
       }
 
       const s = singleRef.current
+
+      if (s && s.moveMode) {
+        if (marqueeRef.current) {
+          const mq = marqueeRef.current
+          marqueeRef.current = null
+          const x0 = Math.max(0, Math.min(mq.ax, mq.bx))
+          const y0 = Math.max(0, Math.min(mq.ay, mq.by))
+          const x1 = Math.min(GRID_SIZE - 1, Math.max(mq.ax, mq.bx))
+          const y1 = Math.min(GRID_SIZE - 1, Math.max(mq.ay, mq.by))
+          if (!s.moved || x1 < x0 || y1 < y0) {
+            selRef.current = null // Tipp -> Auswahl aufheben
+          } else {
+            const w = x1 - x0 + 1
+            const h = y1 - y0 + 1
+            const built = buildFloatCanvas(x0, y0, w, h)
+            selRef.current = { x0, y0, w, h, dx: 0, dy: 0, floatCanvas: built.canvas, cells: built.cells }
+          }
+        } else if (moveActiveRef.current) {
+          moveActiveRef.current = null
+          commitMove()
+        }
+        singleRef.current = null
+        requestRender()
+        return
+      }
+
       if (wasSingle && s && !s.drawing && !s.moved && Date.now() - s.time < 600) {
         handleTap(s.lastCell.gx, s.lastCell.gy, e)
       }

@@ -6,7 +6,7 @@ import Toolbar from './ui/Toolbar.jsx'
 import Timeline from './ui/Timeline.jsx'
 import { useNow, useQuota, useStats, useProfiles, useSnapshots } from './hooks.js'
 import { msUntilNextMidnight, todayStr } from './util/time.js'
-import { PALETTE } from './config.js'
+import { PALETTE, GRID_SIZE } from './config.js'
 
 export default function Board({ backend, profileId }) {
   useNow(1000) // sekuendlicher Re-Render fuer Countdown & Tageswechsel
@@ -101,6 +101,28 @@ export default function Board({ backend, profileId }) {
     scheduleSnapshot()
   }, [backend, profileId, quota, addStats, scheduleSnapshot, showToast])
 
+  // Pixel-Bereich verschieben (Move-Tool). Kostet KEIN Kontingent - es werden
+  // nur vorhandene Pixel umgelagert. Der urspruengliche Autor bleibt erhalten.
+  const moveRegion = useCallback((cells, dx, dy) => {
+    if (!cells.length || (dx === 0 && dy === 0)) return
+    const t = backend.serverNow()
+    const destSet = new Set()
+    const dest = []
+    for (const p of cells) {
+      const nx = p.x + dx
+      const ny = p.y + dy
+      if (nx < 0 || ny < 0 || nx >= GRID_SIZE || ny >= GRID_SIZE) continue
+      destSet.add(`${nx}_${ny}`)
+      dest.push({ x: nx, y: ny, c: p.c, b: p.b })
+    }
+    // Quelle leeren - aber nur Zellen, die nicht ohnehin neu bemalt werden.
+    for (const p of cells) {
+      if (!destSet.has(`${p.x}_${p.y}`)) backend.setPixel(p.x, p.y, null)
+    }
+    for (const d of dest) backend.setPixel(d.x, d.y, { c: d.c, b: d.b || profileId, t })
+    scheduleSnapshot()
+  }, [backend, profileId, scheduleSnapshot])
+
   // Einmal kurz nach dem Laden den heutigen Snapshot sichern.
   useEffect(() => {
     const id = setTimeout(() => scheduleSnapshot(300), 3500)
@@ -129,6 +151,7 @@ export default function Board({ backend, profileId }) {
         profileId={profileId}
         profiles={profiles}
         placePixels={placePixels}
+        moveRegion={moveRegion}
         onEyedrop={(c) => { setColor(c); showToast('Farbe aufgenommen 💧') }}
         getBudget={quota.getRemaining}
         onReady={(api) => { apiRef.current = api }}
