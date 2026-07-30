@@ -19,10 +19,10 @@
       ".read": "auth != null",
       "$profile": {
         ".write": "auth != null",
-        ".validate": "newData.hasChildren(['date','used'])",
         "date": { ".validate": "newData.isString() && newData.val().length <= 10" },
-        "used": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-        "$other": { ".validate": false }
+        "cells": {
+          "$cell": { ".validate": "newData.isBoolean()" }
+        }
       }
     },
 

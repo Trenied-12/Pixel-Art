@@ -75,6 +75,11 @@ export function createMockBackend() {
   return {
     mode: 'mock',
 
+    // Ohne Server nur die Geraetezeit (im Demo-Modus ausreichend).
+    serverNow() {
+      return Date.now()
+    },
+
     async init() {
       // nichts einzurichten - sofort bereit
       return { uid: 'mock-user' }

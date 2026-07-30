@@ -12,45 +12,76 @@ export function useNow(interval = 1000) {
   return now
 }
 
-// Tages-Kontingent fuer das eigene Profil (Tages-Topf-Modell).
+// Tages-Kontingent fuer das eigene Profil.
+//
+// Gezaehlt werden nicht Setz-Aktionen, sondern die MENGE der heute (Serverzeit)
+// veraenderten Zellen. Deshalb wird ein Set der beruehrten Zellkoordinaten
+// gefuehrt: eine Zelle noch einmal (um-)faerben ist gratis, und radiert man
+// eine heute gesetzte Zelle wieder, wird sie freigegeben (zaehlt also nicht).
+// Datenmodell: /quota/{profile} = { date: "YYYY-MM-DD", cells: { "x_y": true } }
 export function useQuota(backend, profileId) {
-  const ref = useRef({ date: todayStr(), used: 0 })
+  const ref = useRef({ date: '', cells: {} })
   const persistTimer = useRef(null)
   const [, bump] = useReducer((x) => x + 1, 0)
 
   useEffect(() => {
     if (!profileId) return
     return backend.onQuota(profileId, (v) => {
-      if (v && typeof v.used === 'number') {
-        // Eingehender (evtl. hoeherer) Serverstand gewinnt, nicht ueberschreiben.
-        if (v.date !== ref.current.date || v.used >= ref.current.used) {
-          ref.current = v
-          bump()
-        }
+      if (v && typeof v === 'object') {
+        ref.current = { date: v.date || '', cells: v.cells || {} }
+        bump()
       }
     })
   }, [backend, profileId])
 
-  const getRemaining = () => {
-    const t = todayStr()
-    const used = ref.current.date === t ? ref.current.used : 0
-    return Math.max(0, DAILY_QUOTA - used)
-  }
+  // "Heute" auf Basis der Serverzeit (nicht der manipulierbaren Geraeteuhr).
+  const serverToday = () => todayStr(new Date(backend.serverNow()))
 
-  const consume = (n) => {
-    const t = todayStr()
-    const base = ref.current.date === t ? ref.current.used : 0
-    ref.current = { date: t, used: base + n }
-    bump()
+  // Zellen, die HEUTE zaehlen; an einem neuen Tag automatisch leer.
+  const cellsToday = () => (ref.current.date === serverToday() ? ref.current.cells : {})
+
+  const getUsed = () => Object.keys(cellsToday()).length
+  const getRemaining = () => Math.max(0, DAILY_QUOTA - getUsed())
+  const isTouched = (x, y) => Boolean(cellsToday()[`${x}_${y}`])
+
+  const persist = () => {
     // Persistenz entprellen: bei einem Malstrich nicht pro Pixel schreiben.
     clearTimeout(persistTimer.current)
-    persistTimer.current = setTimeout(() => {
-      backend.setQuota(profileId, ref.current)
-    }, 350)
+    persistTimer.current = setTimeout(() => backend.setQuota(profileId, ref.current), 350)
   }
 
-  const remaining = getRemaining()
-  return { remaining, used: DAILY_QUOTA - remaining, getRemaining, consume }
+  // Neu beruehrte Zellen aufnehmen (Budget hat der Aufrufer schon geprueft).
+  const addCells = (keys) => {
+    if (!keys.length) return
+    const t = serverToday()
+    const cells = ref.current.date === t ? { ...ref.current.cells } : {}
+    for (const k of keys) cells[k] = true
+    ref.current = { date: t, cells }
+    bump()
+    persist()
+  }
+
+  // Heute beruehrte Zellen wieder freigeben (eigene Pixel radiert/entfernt).
+  const releaseCells = (keys) => {
+    if (!keys.length || ref.current.date !== serverToday()) return
+    const cells = { ...ref.current.cells }
+    let changed = false
+    for (const k of keys) if (cells[k]) { delete cells[k]; changed = true }
+    if (changed) {
+      ref.current = { date: ref.current.date, cells }
+      bump()
+      persist()
+    }
+  }
+
+  return {
+    remaining: getRemaining(),
+    used: getUsed(),
+    getRemaining,
+    isTouched,
+    addCells,
+    releaseCells,
+  }
 }
 
 // Gemeinsamer Gesamtzaehler ("Ihr habt zusammen X Pixel gesetzt").

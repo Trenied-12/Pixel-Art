@@ -397,6 +397,19 @@ button { font-family: inherit; cursor: pointer; }
 }
 .timeline-meta { text-align: center; }
 .timeline-date { font-weight: 800; font-size: 1.05rem; text-transform: capitalize; }
+.timeline-download {
+  display: inline-block;
+  margin-top: 0.7rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9a52, var(--accent));
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-decoration: none;
+  box-shadow: var(--shadow-soft);
+}
+.timeline-download:active { transform: scale(0.96); }
 .timeline-strip {
   display: flex;
   gap: 0.5rem;

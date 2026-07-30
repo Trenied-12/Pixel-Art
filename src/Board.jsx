@@ -9,7 +9,7 @@ import { msUntilNextMidnight, todayStr } from './util/time.js'
 import { PALETTE } from './config.js'
 
 export default function Board({ backend, profileId }) {
-  const now = useNow(1000)
+  useNow(1000) // sekuendlicher Re-Render fuer Countdown & Tageswechsel
   const { profiles, setProfile } = useProfiles(backend)
   const stats = useStats(backend)
   const quota = useQuota(backend, profileId)
@@ -53,31 +53,51 @@ export default function Board({ backend, profileId }) {
     snapTimer.current = setTimeout(() => {
       const api = apiRef.current
       if (!api) return
-      backend.saveSnapshot(todayStr(), { png: api.exportPNG(), count: api.pixelCount() })
+      const day = todayStr(new Date(backend.serverNow()))
+      backend.saveSnapshot(day, { png: api.exportPNG(), count: api.pixelCount() })
     }, delay)
   }, [backend])
 
   const placePixels = useCallback((cells, col) => {
     if (!cells || !cells.length) return
-    const t = Date.now()
+    const t = backend.serverNow()
+
+    // Duplikate innerhalb einer Aktion (z.B. ueberlappender Pinsel) entfernen.
+    const uniq = new Map()
+    for (const [x, y] of cells) uniq.set(`${x}_${y}`, [x, y])
 
     if (col === null) {
-      // Radieren ist kostenlos (verbraucht kein Tageskontingent).
-      for (const [x, y] of cells) backend.setPixel(x, y, null)
+      // Radieren ist immer erlaubt; eigene HEUTE gesetzte Zellen werden frei.
+      const released = []
+      for (const [key, [x, y]] of uniq) {
+        backend.setPixel(x, y, null)
+        if (quota.isTouched(x, y)) released.push(key)
+      }
+      quota.releaseCells(released)
       scheduleSnapshot()
       return
     }
 
+    // Setzen: heute schon beruehrte Zellen sind gratis, neue kosten je 1.
+    const freeCells = []
+    const newCells = []
+    for (const [key, [x, y]] of uniq) {
+      if (quota.isTouched(x, y)) freeCells.push([key, x, y])
+      else newCells.push([key, x, y])
+    }
     const budget = quota.getRemaining()
-    if (budget <= 0) {
-      showToast('Heute keine Pixel mehr übrig 🌙')
+    const allowedNew = newCells.slice(0, budget)
+    const toWrite = [...freeCells, ...allowedNew]
+    if (!toWrite.length) {
+      showToast('Heute keine neuen Pixel mehr übrig 🌙')
       return
     }
-    const allowed = cells.length > budget ? cells.slice(0, budget) : cells
-    for (const [x, y] of allowed) backend.setPixel(x, y, { c: col, b: profileId, t })
-    quota.consume(allowed.length)
-    addStats(allowed.length)
-    if (allowed.length < cells.length) showToast(`Nur noch ${allowed.length} Pixel heute frei`)
+    for (const [, x, y] of toWrite) backend.setPixel(x, y, { c: col, b: profileId, t })
+    quota.addCells(allowedNew.map(([key]) => key))
+    addStats(allowedNew.length)
+    if (allowedNew.length < newCells.length) {
+      showToast(`Nur noch ${allowedNew.length} neue Pixel heute frei`)
+    }
     scheduleSnapshot()
   }, [backend, profileId, quota, addStats, scheduleSnapshot, showToast])
 
@@ -87,7 +107,7 @@ export default function Board({ backend, profileId }) {
     return () => clearTimeout(id)
   }, [scheduleSnapshot])
 
-  const msLeft = msUntilNextMidnight(new Date(now))
+  const msLeft = msUntilNextMidnight(new Date(backend.serverNow()))
 
   return (
     <div className="app">

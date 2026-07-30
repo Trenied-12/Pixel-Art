@@ -24,11 +24,24 @@ export function createFirebaseBackend() {
   const db = getDatabase(app)
   const auth = getAuth(app)
 
+  // Server-Zeit: RTDB liefert unter '.info/serverTimeOffset' die geschaetzte
+  // Differenz zwischen Server- und Geraeteuhr. So basiert "heute" auf der
+  // Serverzeit -> das Tages-Kontingent laesst sich nicht durch Verstellen der
+  // Geraete-Uhrzeit umgehen. ('.info/*' ist immer lesbar, ohne Auth/Regeln.)
+  let serverTimeOffset = 0
+  onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
+    serverTimeOffset = snap.val() || 0
+  })
+
   let resolveReady
   const ready = new Promise((res) => (resolveReady = res))
 
   return {
     mode: 'firebase',
+
+    serverNow() {
+      return Date.now() + serverTimeOffset
+    },
 
     init() {
       signInAnonymously(auth).catch((err) => {

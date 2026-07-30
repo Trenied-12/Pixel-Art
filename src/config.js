@@ -6,8 +6,8 @@
 // Canvas: festes 256x256-Gitter (siehe README, leicht aenderbar).
 export const GRID_SIZE = 256
 
-// Tages-Kontingent pro Person.
-export const DAILY_QUOTA = 100
+// Tages-Kontingent pro Person (Anzahl heute veraenderter Pixel/Zellen).
+export const DAILY_QUOTA = 150
 
 // Zeitzone fuer den Tageswechsel (Kontingent-Reset & Snapshot-Datum).
 export const TIMEZONE = 'Europe/Berlin'

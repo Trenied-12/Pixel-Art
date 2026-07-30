@@ -42,6 +42,15 @@ export default function Timeline({ snapshots, onClose }) {
               <div className="timeline-meta">
                 <div className="timeline-date">{fmtDate(current?.date)}</div>
                 <div className="muted">{(current?.count ?? 0).toLocaleString('de-DE')} Pixel auf dem Board</div>
+                {current?.png && (
+                  <a
+                    className="timeline-download"
+                    href={current.png}
+                    download={`pixel-art-${current.date}.png`}
+                  >
+                    ⬇ Original speichern (256×256 PNG)
+                  </a>
+                )}
               </div>
             </div>
 
