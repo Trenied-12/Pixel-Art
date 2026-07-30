@@ -1,5 +1,42 @@
 import { useState } from 'react'
 
+// data:-URL synchron in einen Blob wandeln (synchron, damit die User-Geste
+// fuer navigator.share() auf iOS erhalten bleibt).
+function dataURLtoBlob(dataurl) {
+  const [head, b64] = dataurl.split(',')
+  const mime = (head.match(/:(.*?);/) || [])[1] || 'image/png'
+  const bin = atob(b64)
+  const arr = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+  return new Blob([arr], { type: mime })
+}
+
+// Bild speichern - iOS-tauglich:
+//   Touch-Geraete (iPhone/iPad) -> Teilen-Menue ("Bild sichern"), da dort das
+//   download-Attribut nicht greift. Desktop -> klassischer Datei-Download.
+function saveSnapshotImage(snap) {
+  if (!snap?.png) return
+  const filename = `pixel-art-${snap.date}.png`
+  const blob = dataURLtoBlob(snap.png)
+  const file = new File([blob], filename, { type: 'image/png' })
+  const canShareFiles = navigator.canShare && navigator.canShare({ files: [file] })
+  const touch = window.matchMedia?.('(pointer: coarse)').matches
+  if (canShareFiles && touch) {
+    navigator
+      .share({ files: [file], title: 'Pixel Art', text: `Pixel-Art ${snap.date}` })
+      .catch(() => {})
+    return
+  }
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1500)
+}
+
 // Zeitleiste / Tagebuch: durch die Tages-Snapshots klicken.
 export default function Timeline({ snapshots, onClose }) {
   const [idx, setIdx] = useState(0)
@@ -43,13 +80,13 @@ export default function Timeline({ snapshots, onClose }) {
                 <div className="timeline-date">{fmtDate(current?.date)}</div>
                 <div className="muted">{(current?.count ?? 0).toLocaleString('de-DE')} Pixel auf dem Board</div>
                 {current?.png && (
-                  <a
+                  <button
+                    type="button"
                     className="timeline-download"
-                    href={current.png}
-                    download={`pixel-art-${current.date}.png`}
+                    onClick={() => saveSnapshotImage(current)}
                   >
                     ⬇ Original speichern (256×256 PNG)
-                  </a>
+                  </button>
                 )}
               </div>
             </div>
