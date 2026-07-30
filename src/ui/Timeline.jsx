@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 // data:-URL synchron in einen Blob wandeln (synchron, damit die User-Geste
 // fuer navigator.share() auf iOS erhalten bleibt).
@@ -14,17 +14,12 @@ function dataURLtoBlob(dataurl) {
 // Bild speichern - iOS-tauglich:
 //   Touch-Geraete (iPhone/iPad) -> Teilen-Menue ("Bild sichern"), da dort das
 //   download-Attribut nicht greift. Desktop -> klassischer Datei-Download.
-function saveSnapshotImage(snap) {
-  if (!snap?.png) return
-  const filename = `pixel-art-${snap.date}.png`
-  const blob = dataURLtoBlob(snap.png)
+function shareOrDownload(blob, filename) {
   const file = new File([blob], filename, { type: 'image/png' })
   const canShareFiles = navigator.canShare && navigator.canShare({ files: [file] })
   const touch = window.matchMedia?.('(pointer: coarse)').matches
   if (canShareFiles && touch) {
-    navigator
-      .share({ files: [file], title: 'Pixel Art', text: `Pixel-Art ${snap.date}` })
-      .catch(() => {})
+    navigator.share({ files: [file], title: 'Pixel Art' }).catch(() => {})
     return
   }
   const url = URL.createObjectURL(blob)
@@ -40,6 +35,7 @@ function saveSnapshotImage(snap) {
 // Zeitleiste / Tagebuch: durch die Tages-Snapshots klicken.
 export default function Timeline({ snapshots, onClose }) {
   const [idx, setIdx] = useState(0)
+  const imgRef = useRef(null)
   const current = snapshots[idx]
 
   const fmtDate = (d) => {
@@ -49,6 +45,43 @@ export default function Timeline({ snapshots, onClose }) {
       })
     } catch {
       return d
+    }
+  }
+
+  // Speichern im gewaehlten Massstab:
+  //   scale = 1  -> Original (256x256, unveraendert)
+  //   scale = 10 -> jeder Pixel wird 10x10 => 2560x2560, OHNE Glaettung (scharf)
+  // Gezeichnet wird das bereits geladene Vorschaubild -> alles synchron, damit
+  // das iOS-Teilen die User-Geste behaelt.
+  const saveImage = (scale) => {
+    if (!current?.png) return
+    if (scale === 1) {
+      shareOrDownload(dataURLtoBlob(current.png), `pixel-art-${current.date}.png`)
+      return
+    }
+    const img = imgRef.current
+    const base = img?.naturalWidth || 256
+    const size = base * scale
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+    ctx.imageSmoothingEnabled = false // harte Pixel statt unscharfem Hochskalieren
+
+    const draw = (source) => {
+      ctx.drawImage(source, 0, 0, size, size)
+      shareOrDownload(
+        dataURLtoBlob(canvas.toDataURL('image/png')),
+        `pixel-art-${current.date}-${size}px.png`,
+      )
+    }
+
+    if (img && img.complete && img.naturalWidth) {
+      draw(img) // synchron -> iOS-Teilen bleibt erlaubt
+    } else {
+      const im = new Image()
+      im.onload = () => draw(im)
+      im.src = current.png
     }
   }
 
@@ -72,6 +105,7 @@ export default function Timeline({ snapshots, onClose }) {
           <>
             <div className="timeline-stage">
               <img
+                ref={imgRef}
                 className="timeline-img"
                 src={current?.png}
                 alt={'Stand vom ' + current?.date}
@@ -80,13 +114,14 @@ export default function Timeline({ snapshots, onClose }) {
                 <div className="timeline-date">{fmtDate(current?.date)}</div>
                 <div className="muted">{(current?.count ?? 0).toLocaleString('de-DE')} Pixel auf dem Board</div>
                 {current?.png && (
-                  <button
-                    type="button"
-                    className="timeline-download"
-                    onClick={() => saveSnapshotImage(current)}
-                  >
-                    ⬇ Original speichern (256×256 PNG)
-                  </button>
+                  <div className="timeline-actions">
+                    <button type="button" className="timeline-download" onClick={() => saveImage(1)}>
+                      ⬇ Original · 256×256
+                    </button>
+                    <button type="button" className="timeline-download alt" onClick={() => saveImage(10)}>
+                      ⬇ Hochauflösend · 2560×2560
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

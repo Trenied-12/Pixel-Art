@@ -397,17 +397,27 @@ button { font-family: inherit; cursor: pointer; }
 }
 .timeline-meta { text-align: center; }
 .timeline-date { font-weight: 800; font-size: 1.05rem; text-transform: capitalize; }
-.timeline-download {
-  display: inline-block;
+.timeline-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
   margin-top: 0.7rem;
+}
+.timeline-download {
+  border: none;
+  cursor: pointer;
   padding: 0.55rem 1rem;
   border-radius: 999px;
   background: linear-gradient(135deg, #ff9a52, var(--accent));
   color: #fff;
   font-weight: 800;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-decoration: none;
   box-shadow: var(--shadow-soft);
+}
+.timeline-download.alt {
+  background: linear-gradient(135deg, #a98cf5, var(--accent-2));
 }
 .timeline-download:active { transform: scale(0.96); }
 .timeline-strip {
