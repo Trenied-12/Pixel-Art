@@ -43,6 +43,12 @@ export function createFirebaseBackend() {
       return Date.now() + serverTimeOffset
     },
 
+    // Nur-Lesen: der "Unbegrenzt"-Schalter am Root. Die App schreibt ihn NIE;
+    // er wird ausschliesslich manuell in der Firebase-Konsole umgestellt.
+    onInfinite(cb) {
+      return onValue(ref(db, 'infinitePixel'), (s) => cb(s.val() === true))
+    },
+
     init() {
       signInAnonymously(auth).catch((err) => {
         console.error(

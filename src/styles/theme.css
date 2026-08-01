@@ -195,6 +195,36 @@ button { font-family: inherit; cursor: pointer; }
 .quota-text { font-size: 0.74rem; font-weight: 700; color: var(--muted); text-align: center; margin-top: 0.2rem; white-space: nowrap; }
 .quota-text strong { color: var(--ink); }
 
+/* Unbegrenzt-Modus: auffaellig hervorgehoben */
+.infinite-badge {
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: #fff;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: linear-gradient(90deg, #ff9a52, #f6c945, #7bc86c, #3ab0c9, #8a6cf0, #ff8fb3, #ff9a52);
+  background-size: 300% 100%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 4px 16px rgba(150, 100, 60, 0.35);
+  animation: inf-shine 4s linear infinite;
+}
+.inf-symbol { font-size: 1.15rem; vertical-align: -1px; }
+@keyframes inf-shine { to { background-position: 300% 0; } }
+
+/* Restpixel des anderen Spielers */
+.other-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 2px solid var(--accent, var(--line));
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem 0.2rem 0.4rem;
+  box-shadow: var(--shadow-soft);
+}
+.other-emoji { font-size: 1.1rem; }
+.other-num { font-weight: 800; font-size: 0.85rem; min-width: 1.2em; text-align: center; }
+
 .total-counter { text-align: right; line-height: 1; display: none; }
 .total-num { font-weight: 900; font-size: 1rem; display: block; }
 .total-label { font-size: 0.62rem; color: var(--muted); font-weight: 700; }

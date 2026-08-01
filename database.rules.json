@@ -3,6 +3,10 @@
     ".read": "auth != null",
     ".write": false,
 
+    "infinitePixel": {
+      ".read": "auth != null"
+    },
+
     "pixels": {
       ".read": "auth != null",
       ".write": "auth != null",

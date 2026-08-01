@@ -4,7 +4,7 @@ import TopBar from './ui/TopBar.jsx'
 import Palette from './ui/Palette.jsx'
 import Toolbar from './ui/Toolbar.jsx'
 import Timeline from './ui/Timeline.jsx'
-import { useNow, useQuota, useStats, useProfiles, useSnapshots } from './hooks.js'
+import { useNow, useQuota, useStats, useProfiles, useSnapshots, useInfinite, useOtherRemaining } from './hooks.js'
 import { msUntilNextMidnight, todayStr } from './util/time.js'
 import { PALETTE, GRID_SIZE } from './config.js'
 
@@ -14,6 +14,10 @@ export default function Board({ backend, profileId }) {
   const stats = useStats(backend)
   const quota = useQuota(backend, profileId)
   const snapshots = useSnapshots(backend)
+  const infinite = useInfinite(backend)
+  const otherId = profileId === 'A' ? 'B' : 'A'
+  const otherRemaining = useOtherRemaining(backend, otherId)
+  const other = { id: otherId, ...profiles[otherId], remaining: otherRemaining }
 
   const [tool, setTool] = useState('pen')
   const [color, setColor] = useState(PALETTE[5]) // warmes Orange als Startfarbe
@@ -78,6 +82,14 @@ export default function Board({ backend, profileId }) {
       return
     }
 
+    if (infinite) {
+      // Unbegrenzt-Modus: alles setzen, kein Kontingent abziehen oder tracken.
+      for (const [, [x, y]] of uniq) backend.setPixel(x, y, { c: col, b: profileId, t })
+      addStats(uniq.size)
+      scheduleSnapshot()
+      return
+    }
+
     // Setzen: heute schon beruehrte Zellen sind gratis, neue kosten je 1.
     const freeCells = []
     const newCells = []
@@ -99,7 +111,7 @@ export default function Board({ backend, profileId }) {
       showToast(`Nur noch ${allowedNew.length} neue Pixel heute frei`)
     }
     scheduleSnapshot()
-  }, [backend, profileId, quota, addStats, scheduleSnapshot, showToast])
+  }, [backend, profileId, quota, addStats, scheduleSnapshot, showToast, infinite])
 
   // Pixel-Bereich verschieben (Move-Tool). Kostet KEIN Kontingent - es werden
   // nur vorhandene Pixel umgelagert. Der urspruengliche Autor bleibt erhalten.
@@ -138,6 +150,8 @@ export default function Board({ backend, profileId }) {
         remaining={quota.remaining}
         msUntilReset={msLeft}
         total={stats.totalPlaced}
+        infinite={infinite}
+        other={other}
         onOpenTimeline={() => setShowTimeline(true)}
         onRename={(d) => setProfile(profileId, d)}
       />

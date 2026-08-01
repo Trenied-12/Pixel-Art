@@ -2,7 +2,7 @@ import { DAILY_QUOTA } from '../config.js'
 import { formatDuration } from '../util/time.js'
 
 export default function TopBar({
-  me, remaining, msUntilReset, total, onOpenTimeline, onRename,
+  me, remaining, msUntilReset, total, infinite, other, onOpenTimeline, onRename,
 }) {
   const pct = Math.round((remaining / DAILY_QUOTA) * 100)
   const empty = remaining <= 0
@@ -25,21 +25,37 @@ export default function TopBar({
       </div>
 
       <div className="topbar-center">
-        <div className={'quota' + (empty ? ' is-empty' : '')}>
-          <div className="quota-bar">
-            <div className="quota-fill" style={{ width: pct + '%' }} />
+        {infinite ? (
+          <div className="infinite-badge" title="Unbegrenzter Modus aktiv – beide koennen unbegrenzt Pixel setzen">
+            <span className="inf-symbol">∞</span> Unbegrenzte Pixel
           </div>
-          <div className="quota-text">
-            {empty ? (
-              <>Leer · neue Pixel in <strong>{formatDuration(msUntilReset)}</strong></>
-            ) : (
-              <><strong>{remaining}</strong> / {DAILY_QUOTA} Pixel heute</>
-            )}
+        ) : (
+          <div className={'quota' + (empty ? ' is-empty' : '')}>
+            <div className="quota-bar">
+              <div className="quota-fill" style={{ width: pct + '%' }} />
+            </div>
+            <div className="quota-text">
+              {empty ? (
+                <>Leer · neue Pixel in <strong>{formatDuration(msUntilReset)}</strong></>
+              ) : (
+                <><strong>{remaining}</strong> / {DAILY_QUOTA} Pixel heute</>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="topbar-right">
+        {other && (
+          <div
+            className="other-chip"
+            style={{ '--accent': other.accent }}
+            title={`${other.name} hat noch ${infinite ? 'unbegrenzt' : other.remaining} Pixel`}
+          >
+            <span className="other-emoji">{other.emoji}</span>
+            <span className="other-num">{infinite ? '∞' : other.remaining}</span>
+          </div>
+        )}
         <div className="total-counter" title="Gemeinsam gesetzte Pixel seit dem Start">
           <span className="total-num">{total.toLocaleString('de-DE')}</span>
           <span className="total-label">zusammen gesetzt</span>

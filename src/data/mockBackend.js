@@ -80,6 +80,12 @@ export function createMockBackend() {
       return Date.now()
     },
 
+    // "Unbegrenzt"-Schalter (im Demo-Modus aus localStorage; Standard: aus).
+    onInfinite(cb) {
+      cb(read('pac.mock.infinitePixel', false) === true)
+      return () => {}
+    },
+
     async init() {
       // nichts einzurichten - sofort bereit
       return { uid: 'mock-user' }

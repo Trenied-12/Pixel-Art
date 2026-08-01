@@ -84,6 +84,25 @@ export function useQuota(backend, profileId) {
   }
 }
 
+// "Unbegrenzt"-Schalter (Root-Boolean 'infinitePixel' in Firebase, nur lesbar).
+export function useInfinite(backend) {
+  const [inf, setInf] = useState(false)
+  useEffect(() => backend.onInfinite(setInf), [backend])
+  return inf
+}
+
+// Verbleibende Pixel des ANDEREN Spielers (nur Anzeige, Serverdatum).
+export function useOtherRemaining(backend, otherId) {
+  const [data, setData] = useState(null)
+  useEffect(() => {
+    if (!otherId) return
+    return backend.onQuota(otherId, setData)
+  }, [backend, otherId])
+  const today = todayStr(new Date(backend.serverNow()))
+  const used = data && data.date === today ? Object.keys(data.cells || {}).length : 0
+  return Math.max(0, DAILY_QUOTA - used)
+}
+
 // Gemeinsamer Gesamtzaehler ("Ihr habt zusammen X Pixel gesetzt").
 export function useStats(backend) {
   const [stats, setStats] = useState({ totalPlaced: 0, startedAt: Date.now() })
