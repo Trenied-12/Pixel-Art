@@ -46,7 +46,10 @@ export function createFirebaseBackend() {
     // Nur-Lesen: der "Unbegrenzt"-Schalter am Root. Die App schreibt ihn NIE;
     // er wird ausschliesslich manuell in der Firebase-Konsole umgestellt.
     onInfinite(cb) {
-      return onValue(ref(db, 'infinitePixel'), (s) => cb(s.val() === true))
+      return onValue(ref(db, 'infinitePixel'), (s) => {
+        const v = s.val()
+        cb(v === true || v === 'true' || v === 1) // tolerant ggü. manueller Eingabe
+      })
     },
 
     init() {

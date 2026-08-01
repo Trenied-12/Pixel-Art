@@ -82,7 +82,8 @@ export function createMockBackend() {
 
     // "Unbegrenzt"-Schalter (im Demo-Modus aus localStorage; Standard: aus).
     onInfinite(cb) {
-      cb(read('pac.mock.infinitePixel', false) === true)
+      const v = read('pac.mock.infinitePixel', false)
+      cb(v === true || v === 'true' || v === 1)
       return () => {}
     },
 
